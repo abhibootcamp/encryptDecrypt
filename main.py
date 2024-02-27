@@ -1,91 +1,48 @@
 import streamlit as st
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.backends import default_backend
 
-# Function to generate RSA key pair
-def generate_rsa_key_pair():
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
-    )
-    public_key = private_key.public_key()
-    return private_key, public_key
-
-# Function to encrypt text using RSA
-def encrypt_rsa(public_key, text):
-    encrypted_text = public_key.encrypt(
-        text.encode(),
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=serialization.BestAvailableHash(default_backend())),
-            algorithm=serialization.NoEncryption()
-        )
-    )
-    return encrypted_text
-
-# Function to decrypt text using RSA
-def decrypt_rsa(private_key, encrypted_text):
-    decrypted_text = private_key.decrypt(
-        encrypted_text,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=serialization.BestAvailableHash(default_backend())),
-            algorithm=serialization.NoEncryption()
-        )
-    )
-    return decrypted_text.decode()
+# Function to generate AES key
+def generate_aes_key():
+    return Fernet.generate_key()
 
 # Function to encrypt text using AES
-def encrypt_aes(key, text):
-    cipher = Fernet(key)
-    encrypted_text = cipher.encrypt(text.encode())
+def encrypt_text(key, text):
+    cipher_suite = Fernet(key)
+    encrypted_text = cipher_suite.encrypt(text.encode())
     return encrypted_text
 
 # Function to decrypt text using AES
-def decrypt_aes(key, encrypted_text):
-    cipher = Fernet(key)
-    decrypted_text = cipher.decrypt(encrypted_text)
-    return decrypted_text.decode()
+def decrypt_text(key, encrypted_text):
+    cipher_suite = Fernet(key)
+    decrypted_text = cipher_suite.decrypt(encrypted_text).decode()
+    return decrypted_text
 
-st.title("Text Encryption Using Cryptographic Algorithms")
+st.title("Text Encryption and Decryption")
 
-# Select encryption algorithm
-algorithm = st.selectbox("Select Encryption Algorithm", ["AES", "DES", "RSA"])
+# Generate AES key
+key = generate_aes_key()
 
-if algorithm == "RSA":
-    # Generate RSA key pair
-    private_key, public_key = generate_rsa_key_pair()
+# User input for text
+text = st.text_area("Enter Text:")
 
-if st.button("Encrypt/Decrypt"):
-    text = st.text_area("Enter Text")
-
+# Encryption button
+if st.button("Encrypt"):
     if text:
-        if algorithm == "AES":
-            key = st.text_input("Enter AES Key (16, 24, or 32 bytes)")
-            if key:
-                if len(key) not in [16, 24, 32]:
-                    st.error("AES Key must be 16, 24, or 32 bytes long.")
-                else:
-                    if st.checkbox("Encrypt"):
-                        encrypted_text = encrypt_aes(key.encode(), text)
-                        st.write("Encrypted Text:", encrypted_text)
-                    if st.checkbox("Decrypt"):
-                        decrypted_text = decrypt_aes(key.encode(), encrypted_text)
-                        st.write("Decrypted Text:", decrypted_text)
-            else:
-                st.warning("Please enter the AES key.")
-
-        elif algorithm == "DES":
-            st.warning("DES encryption/decryption is not implemented in this example.")
-
-        elif algorithm == "RSA":
-            if st.checkbox("Encrypt"):
-                encrypted_text = encrypt_rsa(public_key, text)
-                st.write("Encrypted Text:", encrypted_text)
-            if st.checkbox("Decrypt"):
-                decrypted_text = decrypt_rsa(private_key, encrypted_text)
-                st.write("Decrypted Text:", decrypted_text)
-
+        encrypted_text = encrypt_text(key, text)
+        st.success("Text encrypted successfully!")
+        st.write("Encrypted Text:", encrypted_text.decode())
     else:
-        st.warning("Please enter text to encrypt/decrypt.")
+        st.warning("Please enter text to encrypt.")
+
+# Decryption button
+if st.button("Decrypt"):
+    encrypted_text = st.text_area("Enter Encrypted Text:")
+    if encrypted_text:
+        try:
+            decrypted_text = decrypt_text(key, encrypted_text.encode())
+            st.success("Text decrypted successfully!")
+            st.write("Decrypted Text:", decrypted_text)
+        except Exception as e:
+            st.error("Decryption failed. Please check the input.")
+    else:
+        st.warning("Please enter encrypted text to decrypt.")
